@@ -2,6 +2,13 @@
 
 GPAS Secure is a cybersecurity-focused **Graphical Password Authentication System (GPAS)** developed as a B.Tech Mini Project. The system enhances traditional authentication mechanisms by incorporating image-based graphical passwords, secure file storage, audit logging, user management, analytics, and administrative monitoring features.
 
+🌐 **Live Demo:** [gpas-secure.onrender.com](https://gpas-secure.onrender.com)  
+💻 **GitHub Repository:** [madhavmanugula/gpas-secure](https://github.com/madhavmanugula/gpas-secure)
+
+### Project Status
+
+The application is deployed and available online.
+
 ---
 
 ## 🚀 Features
@@ -51,6 +58,8 @@ GPAS Secure is a cybersecurity-focused **Graphical Password Authentication Syste
 | Node.js    | Backend Runtime                 |
 | Express.js | Web Framework                   |
 | MySQL      | Database Management             |
+| Aiven MySQL | Production cloud database       |
+| Cloudinary | Cloud image storage for graphical password and user images |
 | Multer     | File Upload Handling            |
 | dotenv     | Environment Variable Management |
 | bcrypt     | Password Security               |
@@ -100,10 +109,12 @@ gpas-secure/
 
 ## ⚙️ Installation
 
+### Local Development Setup
+
 ### 1️⃣ Clone the Repository
 
 ```bash
-git clone https://github.com/madhavnani1805/gpas-secure.git
+git clone https://github.com/madhavmanugula/gpas-secure.git
 cd gpas-secure
 ```
 
@@ -115,15 +126,7 @@ npm install
 
 ### 3️⃣ Configure Environment Variables
 
-Create a `.env` file in the root directory using `.env.example` as a reference.
-
-```env
-DB_HOST=localhost
-DB_USER=your_username
-DB_PASSWORD=your_password
-DB_NAME=gpas
-PORT=3001
-```
+Create a local `.env` file in the project root using `.env.example` as a reference, and provide the values for your local development environment. Keep credentials and secrets out of the README and do not commit your `.env` file.
 
 ### 4️⃣ Start the Application
 
@@ -136,6 +139,21 @@ The application will be available at:
 ```text
 http://localhost:3001
 ```
+
+---
+
+## 🌐 Deployment
+
+The deployed application uses the following architecture:
+
+| Component | Service |
+| --------- | ------- |
+| Source code | GitHub |
+| Application hosting | Render (Node.js/Express) |
+| Production database | Aiven MySQL |
+| Graphical password and user image storage | Cloudinary |
+
+**Live application:** [https://gpas-secure.onrender.com](https://gpas-secure.onrender.com)
 
 ---
 
@@ -215,7 +233,6 @@ Primary development, backend implementation, security features, file vault integ
 
 * Multi-Factor Authentication (MFA)
 * Email-Based Verification
-* Cloud File Storage Integration
 * Advanced Security Analytics
 * Real-Time Notifications
 * Enhanced User Reporting
@@ -238,6 +255,16 @@ Your support is appreciated and helps showcase the project to a wider audience.
 
 ---
 
-### 🚀 GPAS Secure v1.0
+## ✨ What's New in v1.1.0
+
+* Cloud deployment
+* Render application hosting
+* Aiven MySQL production database
+* Cloudinary image storage for graphical password and user images
+* Production environment configuration
+
+---
+
+### 🚀 GPAS Secure v1.1.0
 
 *A modern Graphical Password Authentication System focused on security, usability, administration, and monitoring.*
