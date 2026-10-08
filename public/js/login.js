@@ -52,7 +52,11 @@ async function loadUser(){
       return;
     }
 
-    img.src = "/" + data.image_path.replace(/\\/g,"/") + "?t=" + Date.now();
+    const imagePath = data.image_path.replace(/\\/g, "/");
+
+  img.src = imagePath.startsWith("http")
+    ? imagePath + "?t=" + Date.now()
+    : "/" + imagePath + "?t=" + Date.now();
 
     img.onload = () => {
       document.getElementById("imageLoader").classList.add("hidden");

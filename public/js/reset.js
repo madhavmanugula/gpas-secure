@@ -65,14 +65,18 @@ window.onload = async function(){
       return;
     }
 
-    // 🔥 ADD TIMESTAMP TO BUST CACHE
-    img.src = "/" + data.image.replace(/\\/g, "/") + "?t=" + Date.now();
+// 🔥 ADD TIMESTAMP TO BUST CACHE
+// 🔥 SUPPORT BOTH LOCAL AND CLOUDINARY IMAGES
+const imagePath = data.image.replace(/\\/g, "/");
 
-  }catch(err){
-    console.log("LOAD IMAGE ERROR:", err);
-    alert("Server error ❌");
-  }
+img.src = imagePath.startsWith("http")
+  ? imagePath + "?t=" + Date.now()
+  : "/" + imagePath + "?t=" + Date.now();
 
+} catch(err) {
+  console.log("LOAD IMAGE ERROR:", err);
+  alert("Server error ❌");
+}
 };
 
 

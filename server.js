@@ -7,9 +7,15 @@ const bcrypt = require("bcrypt");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const { v2: cloudinary } = require("cloudinary");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 console.log("🔥 SERVER FILE LOADED:", __filename, "PORT:", PORT);
 
@@ -35,6 +41,16 @@ const db = mysql.createPool({
     : undefined,
   waitForConnections: true,
   connectionLimit: 10
+    host: process.env.DB_HOST,
+    port: Number(process.env.DB_PORT || 3306),
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    ssl: process.env.DB_SSL === "true"
+        ? { rejectUnauthorized: false }
+        : undefined,
+    waitForConnections: true,
+    connectionLimit: 10
 });
 
 /* test connection */
@@ -84,12 +100,14 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-
+const imageUpload = multer({
+    storage: multer.memoryStorage()
+});
 
 /* =====================================================
    REGISTER USER
 ===================================================== */
-app.post("/register", upload.single("image"), async (req, res) => {
+app.post("/register", imageUpload.single("image"), async (req, res) => {
 
     try {
         const { username, email, points } = req.body;
@@ -98,7 +116,23 @@ app.post("/register", upload.single("image"), async (req, res) => {
             return res.status(400).json({ success: false });
 
         // 🔥 FIXED PATH
-        const imagePath = req.file.path.replace(/\\/g, "/");
+      const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+            folder: "gpas-secure/users",
+            public_id: username,
+            overwrite: false
+        },
+        (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+        }
+    );
+
+    stream.end(req.file.buffer);
+});
+
+const imagePath = result.secure_url;
 
         await db.execute(
             `INSERT INTO users (username, email, image_path, points)
@@ -183,10 +217,10 @@ app.get("/get-image", async (req, res) => {
         const email = req.query.email;
         console.log("🔥 GET IMAGE REQUEST - EMAIL:", email);   // 🔥 DEBUG
 
-        const [rows] = await db.execute(
-            "SELECT image_path, points FROM users WHERE email=?",
-            [email]
-        );
+       const [rows] = await db.execute(
+       "SELECT username, image_path FROM users WHERE email=?",
+       [email]
+);
 
         console.log("🔥 DB RESULT:", rows);  // 🔥 DEBUG
 
@@ -236,49 +270,95 @@ app.post("/reset-password", async (req, res) => {
 
 /* UPDATE IMAGE + PASSWORD */
 console.log("🔥 UPDATE ROUTE REGISTERED");
-app.post("/update-image-password", upload.single("image"), async (req, res) => {
+
+app.post("/update-image-password", imageUpload.single("image"), async (req, res) => {
 
     try {
         const { email, points } = req.body;
 
-        console.log("🔥 UPDATE IMAGE REQUEST:", { email, points, file: req.file?.filename });  // 🔥 DEBUG
+        console.log("🔥 UPDATE IMAGE REQUEST:", {
+            email,
+            points,
+            file: req.file ? "received" : "missing"
+        });
 
         if (!email || !points || !req.file) {
-            console.log("❌ MISSING DATA:", { email, points, file: !!req.file });
+            console.log("❌ MISSING DATA:", {
+                email,
+                points,
+                file: !!req.file
+            });
             return res.json({ success: false });
         }
 
         // 🔥 GET OLD IMAGE
         const [rows] = await db.execute(
-            "SELECT image_path FROM users WHERE email=?",
+           "SELECT username, image_path FROM users WHERE email=?",
             [email]
         );
 
-        console.log("🔥 OLD IMAGE PATH:", rows[0]?.image_path);  // 🔥 DEBUG
+        console.log("🔥 OLD IMAGE PATH:", rows[0]?.image_path);
 
+        // 🔥 UPLOAD NEW IMAGE TO CLOUDINARY
+        const result = await new Promise((resolve, reject) => {
+
+            const stream = cloudinary.uploader.upload_stream(
+    {
+        folder: "gpas-secure/users",
+        public_id: rows[0].username,
+        overwrite: true
+    },
+                (error, result) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        resolve(result);
+                    }
+                }
+            );
+
+            stream.end(req.file.buffer);
+        });
+
+        // 🔥 CLOUDINARY URL
+        const newPath = result.secure_url;
+
+        console.log("🔥 NEW CLOUDINARY IMAGE:", newPath);
+
+        // 🔥 DELETE OLD LOCAL IMAGE ONLY
+        // If old image is a local uploads/... file
         if (rows.length) {
-            const oldPath = String(rows[0].image_path || "").replace(/\\/g, "/").replace(/^\/+/, "");
-            let fullOldPath = oldPath;
 
-            if (!path.isAbsolute(fullOldPath)) {
-                fullOldPath = path.join(__dirname, fullOldPath);
-            }
+            const oldPath = String(rows[0].image_path || "")
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, "");
 
-            fullOldPath = path.normalize(fullOldPath);
+            // Don't try to delete Cloudinary URLs as local files
+            if (!oldPath.startsWith("http")) {
 
-            // DELETE OLD IMAGE
-            if (fs.existsSync(fullOldPath)) {
-                fs.unlinkSync(fullOldPath);
-                console.log("✅ OLD IMAGE DELETED:", fullOldPath);  // 🔥 DEBUG
+                let fullOldPath = oldPath;
+
+                if (!path.isAbsolute(fullOldPath)) {
+                    fullOldPath = path.join(__dirname, fullOldPath);
+                }
+
+                fullOldPath = path.normalize(fullOldPath);
+
+                if (fs.existsSync(fullOldPath)) {
+                    fs.unlinkSync(fullOldPath);
+                    console.log("✅ OLD LOCAL IMAGE DELETED:", fullOldPath);
+                } else {
+                    console.log("❌ OLD LOCAL IMAGE NOT FOUND:", fullOldPath);
+                }
+
             } else {
-                console.log("❌ OLD IMAGE NOT FOUND:", fullOldPath);  // 🔥 DEBUG
+                console.log("☁️ OLD IMAGE IS ALREADY ON CLOUDINARY");
             }
         }
 
-        // NEW IMAGE PATH
-        const newPath = req.file.path.replace(/\\/g, "/");
-
+        // 🔥 PARSE POINTS
         let parsedPoints = points;
+
         if (typeof parsedPoints === "string") {
             try {
                 parsedPoints = JSON.parse(parsedPoints);
@@ -289,27 +369,34 @@ app.post("/update-image-password", upload.single("image"), async (req, res) => {
 
         if (!Array.isArray(parsedPoints)) {
             console.log("❌ INVALID POINTS:", points);
-            return res.json({ success: false, error: "Invalid points" });
+            return res.json({
+                success: false,
+                error: "Invalid points"
+            });
         }
 
         const pointsJson = JSON.stringify(parsedPoints);
 
-        console.log("🔥 NEW IMAGE PATH:", newPath);  // 🔥 DEBUG
-        console.log("🔥 POINTS:", pointsJson);  // 🔥 DEBUG
+        console.log("🔥 POINTS:", pointsJson);
 
-        // UPDATE DB
+        // 🔥 UPDATE DATABASE
         await db.execute(
-            "UPDATE users SET image_path=?, points=? WHERE email= ?",
+            "UPDATE users SET image_path=?, points=? WHERE email=?",
             [newPath, pointsJson, email]
         );
 
-        console.log("✅ DATABASE UPDATED SUCCESSFULLY");  // 🔥 DEBUG
+        console.log("✅ DATABASE UPDATED SUCCESSFULLY");
 
         res.json({ success: true });
 
     } catch (err) {
+
         console.error("❌ UPDATE IMAGE ERROR:", err.message);
-        res.json({ success: false, error: err.message });
+
+        res.json({
+            success: false,
+            error: err.message
+        });
     }
 });
 
