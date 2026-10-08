@@ -1,13 +1,17 @@
 # 🔐 GPAS Secure
 
-GPAS Secure is a cybersecurity-focused **Graphical Password Authentication System (GPAS)** developed as a B.Tech Mini Project. The system enhances traditional authentication mechanisms by incorporating image-based graphical passwords, secure file storage, audit logging, user management, analytics, and administrative monitoring features.
+A cybersecurity-focused Graphical Password Authentication System with image-based authentication, secure file management, administrative monitoring, audit logging, and analytics.
 
-🌐 **Live Demo:** [gpas-secure.onrender.com](https://gpas-secure.onrender.com)  
-💻 **GitHub Repository:** [madhavmanugula/gpas-secure](https://github.com/madhavmanugula/gpas-secure)
+🌐 **Live Demo:** https://gpas-secure.onrender.com
+💻 **GitHub Repository:** https://github.com/madhavmanugula/gpas-secure
 
-### Project Status
+## 🚀 Project Status
 
-The application is deployed and available online.
+**Status:** Live / Deployed
+
+GPAS Secure is deployed as a live web application using Render, with Aiven MySQL as the production database and Cloudinary for cloud image storage.
+
+**Live Demo:** https://gpas-secure.onrender.com
 
 ---
 
@@ -50,20 +54,21 @@ The application is deployed and available online.
 
 ## 🛠️ Technologies Used
 
-| Technology | Purpose                         |
-| ---------- | ------------------------------- |
-| HTML5      | Frontend Structure              |
-| CSS3       | User Interface Design           |
-| JavaScript | Client-Side Functionality       |
-| Node.js    | Backend Runtime                 |
-| Express.js | Web Framework                   |
-| MySQL      | Database Management             |
-| Aiven MySQL | Production cloud database       |
-| Cloudinary | Cloud image storage for graphical password and user images |
-| Multer     | File Upload Handling            |
-| dotenv     | Environment Variable Management |
-| bcrypt     | Password Security               |
-| cors       | Cross-Origin Resource Sharing   |
+| Technology | Purpose |
+|---|---|
+| HTML5 | Frontend Structure |
+| CSS3 | User Interface Design |
+| JavaScript | Client-Side Functionality |
+| Node.js | Backend Runtime |
+| Express.js | Web Framework |
+| MySQL | Database Management |
+| Aiven MySQL | Production Cloud Database |
+| Cloudinary | Cloud Image Storage for graphical password and user images |
+| Multer | File Upload Handling |
+| bcrypt | Password Security |
+| dotenv | Environment Configuration |
+| CORS | Cross-Origin Resource Sharing |
+| mysql2 | MySQL Database Connectivity |
 
 ---
 
@@ -126,7 +131,15 @@ npm install
 
 ### 3️⃣ Configure Environment Variables
 
-Create a local `.env` file in the project root using `.env.example` as a reference, and provide the values for your local development environment. Keep credentials and secrets out of the README and do not commit your `.env` file.
+Create a local `.env` file in the project root using `.env.example` as a reference. The following example is for **local development only**; replace the placeholders with your own local values. Do not use production credentials here or commit your `.env` file.
+
+```env
+DB_HOST=localhost
+DB_USER=your_username
+DB_PASSWORD=your_password
+DB_NAME=gpas
+PORT=3001
+```
 
 ### 4️⃣ Start the Application
 
@@ -144,16 +157,18 @@ http://localhost:3001
 
 ## 🌐 Deployment
 
-The deployed application uses the following architecture:
+GPAS Secure uses a cloud-based deployment architecture:
 
-| Component | Service |
-| --------- | ------- |
-| Source code | GitHub |
-| Application hosting | Render (Node.js/Express) |
-| Production database | Aiven MySQL |
-| Graphical password and user image storage | Cloudinary |
+| Component | Platform |
+|---|---|
+| Source Code | GitHub |
+| Application Hosting | Render |
+| Production Database | Aiven MySQL |
+| Cloud Image Storage | Cloudinary |
 
-**Live application:** [https://gpas-secure.onrender.com](https://gpas-secure.onrender.com)
+### Live Application
+
+https://gpas-secure.onrender.com
 
 ---
 
@@ -262,6 +277,7 @@ Your support is appreciated and helps showcase the project to a wider audience.
 * Aiven MySQL production database
 * Cloudinary image storage for graphical password and user images
 * Production environment configuration
+* Updated deployment documentation
 
 ---
 
