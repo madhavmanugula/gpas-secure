@@ -1,41 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Forgot Password</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-
-<body class="bg-gray-900 text-white flex items-center justify-center h-screen">
-
-<div class="bg-white/10 p-8 rounded-xl w-80 text-center">
-
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+<div class="bg-white/10 p-8 rounded-xl w-full max-w-sm text-center">
   <h2 class="text-xl mb-4">Forgot Password</h2>
+  <p class="text-sm text-gray-300 mb-4">Enter your registered email address or username.</p>
 
-  <!-- email -->
-  <input id="email" type="email"
+  <input id="email" type="text" autocomplete="username"
     class="w-full p-2 rounded bg-gray-700 text-white mb-3"
-    placeholder="Enter Registered Email">
+    placeholder="Registered email or username">
 
-  <!-- send otp -->
-  <button onclick="sendOTP()"
-    class="w-full bg-purple-500 py-2 rounded mb-3">
-    Send OTP
+  <button onclick="sendOTP()" class="w-full bg-purple-500 py-2 rounded mb-4">
+    Send Recovery Code
   </button>
 
-  <!-- otp input -->
-  <input id="otp"
-    class="w-full p-2 rounded bg-gray-700 text-white mb-3"
-    placeholder="Enter OTP">
 
-  <!-- verify -->
-  <button onclick="verifyOTP()"
-    class="w-full bg-green-500 py-2 rounded">
+
+  <input id="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code"
+    class="w-full p-2 rounded bg-gray-700 text-white mb-3"
+    placeholder="Enter 6-digit OTP">
+
+  <button onclick="verifyOTP()" class="w-full bg-green-500 py-2 rounded">
     Verify OTP
   </button>
-
+  <p id="recoveryStatus" role="status" class="text-sm mt-4 text-yellow-200"></p>
 </div>
-
 <script src="js/forgot.js"></script>
-
 </body>
 </html>

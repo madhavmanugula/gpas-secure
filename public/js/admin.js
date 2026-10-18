@@ -1,8 +1,6 @@
 window.onload = async function(){
 
-  const admin = localStorage.getItem("username");
-
-  const res = await fetch(`/all-users?username=${admin}`);
+  const res = await fetch("/all-users");
   const data = await res.json();
 
   if(data.error){
@@ -28,14 +26,11 @@ window.onload = async function(){
 
 async function deleteUser(username){
 
-  const admin = localStorage.getItem("username");
-
   await fetch("/delete-user",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body: JSON.stringify({
-      username,
-      admin
+      username
     })
   });
 

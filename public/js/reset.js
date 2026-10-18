@@ -47,17 +47,17 @@ fileInput.addEventListener("change", function(){
 /* ========= LOAD IMAGE ========= */
 window.onload = async function(){
 
-  const email = localStorage.getItem("resetEmail");
+  const recoveryToken = sessionStorage.getItem("recoveryToken");
 
   // 🔒 Prevent direct access
-  if(!email){
+  if(!recoveryToken){
     alert("Unauthorized access ❌");
     window.location.href = "forgot.html";
     return;
   }
 
   try{
-    const res = await fetch(`/get-image?email=${email}&t=${Date.now()}`);
+    const res = await fetch(`/get-image?recoveryToken=${encodeURIComponent(recoveryToken)}&t=${Date.now()}`);
     const data = await res.json();
 
     if(!data.image){
@@ -140,14 +140,14 @@ async function saveNewPassword(){
     return;
   }
 
-  const email = localStorage.getItem("resetEmail");
+  const recoveryToken = sessionStorage.getItem("recoveryToken");
 
   try{
     const res = await fetch("/reset-password",{
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        email: email,
+        recoveryToken: recoveryToken,
         points: points
       })
     });
@@ -159,7 +159,7 @@ async function saveNewPassword(){
       alert("Password Updated ✔");
 
       // ⭐ VERY IMPORTANT (clear session)
-      localStorage.removeItem("resetEmail");
+      sessionStorage.removeItem("recoveryToken");
 
       setTimeout(()=>{
         window.location.href = "login.html";
@@ -191,14 +191,14 @@ async function updateImageAndPassword(){
     return;
   }
 
-  const email = localStorage.getItem("resetEmail");
+  const recoveryToken = sessionStorage.getItem("recoveryToken");
 
   const formData = new FormData();
   formData.append("image", file);
-  formData.append("email", email);
+  formData.append("recoveryToken", recoveryToken);
   formData.append("points", JSON.stringify(points));
 
-  console.log("SENDING UPDATE WITH POINTS:", points);  // 🔥 DEBUG
+  // Send only the recovery token and the selected points; identity is resolved server-side.
 
   try{
     const res = await fetch("/update-image-password",{
@@ -216,12 +216,12 @@ async function updateImageAndPassword(){
       throw new Error("Invalid JSON response from server");
     }
 
-    console.log("UPDATE RESPONSE:", data);  // 🔥 DEBUG
+
 
     if(data.success){
       alert("Image + Password Updated ✔");
 
-      localStorage.removeItem("resetEmail");
+      sessionStorage.removeItem("recoveryToken");
 
       setTimeout(()=>{
         window.location.href = "login.html";

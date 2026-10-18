@@ -64,9 +64,7 @@ async function loadUser(){
 
     document.getElementById("imgBox").classList.remove("hidden");
 
-    storedPoints = typeof data.points === "string"
-      ? JSON.parse(data.points)
-      : data.points;
+    storedPoints = []; // Secret points are verified only by the server.
 
     clearLoginPoints();
 
@@ -217,93 +215,47 @@ const interval = setInterval(()=>{
 /* =================================================
    LOGIN
 ================================================= */
-function login(){
-
+async function login(){
   const username = usernameInput.value.trim();
-  const captcha  = parseInt(captchaInput.value);
-
+  const captcha = parseInt(captchaInput.value, 10);
+  if (lockUntil && Date.now() < lockUntil) { showToast("Account locked.🔒 Wait ⏳"); return; }
+  if (!username || username.length < 3) { showToast("Enter a valid username ❌"); return; }
+  if (captcha !== a + b) { showToast("Wrong captcha ❌"); return; }
+  if (loginPoints.length !== 4) { showToast("Click 4 points ❌"); return; }
   loader.classList.remove("hidden");
-
-  setTimeout(()=>{
-
+  try {
+    const response = await fetch("/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ username, points: loginPoints })
+    });
+    const result = await response.json();
     loader.classList.add("hidden");
-
-    /* 🔒 LOCK CHECK */
-    if(lockUntil && Date.now() < lockUntil){
-      showToast("Account locked.🔒  Wait ⏳");
-      return;
-    }
-
-    if(username===""){
-      showToast("Enter username ❌");
-      return;
-    }
-
-    if(username.length<3){
-      showToast("Invalid username ❌");
-      return;
-    }
-
-    if(captcha !== a+b){
-      showToast("Wrong captcha ❌");
-      return;
-    }
-
-    if(loginPoints.length !== 4){
-      showToast("Click 4 points ❌");
-      return;
-    }
-
-    if(!storedPoints || storedPoints.length !== 4){
-      showToast("User data error ❌");
-      return;
-    }
-
-    let matched = 0;
-
-    for(let i=0;i<4;i++){
-      if(isClose(loginPoints[i], storedPoints[i])) matched++;
-    }
-
-    if(matched === 4)
-{
-  showToast("Login success ✅");
-
-  localStorage.setItem("loginTime", Date.now());
-  localStorage.setItem("username", username);
-  localStorage.setItem("lastAttempts", attempts);
-  localStorage.setItem("attempts", attempts);
-  document.getElementById("attemptDisplay").innerText = "";
-  setTimeout(()=>location.href="dashboard.html",1000);
-}
-    else{
-
+    if (!response.ok || !result.success) {
       attempts++;
       localStorage.setItem("attempts", attempts);
-
-      document.getElementById("attemptDisplay").innerText =
-        `Attempts: ${attempts}/3`;
-
-      if(attempts >= 3){
+      document.getElementById("attemptDisplay").innerText = `Attempts: ${attempts}/3`;
+      if (attempts >= 3) {
         lockUntil = Date.now() + 5 * 60 * 1000;
         showToast("Locked for 5 minutes 🔒");
         startCountdown();
-      }else
-        {
-        document.querySelector(".fade-in").classList.add("shake");
-            setTimeout(()=>
-          {
-        document.querySelector(".fade-in").classList.remove("shake");
-          },400);
-
-showToast(`Wrong secret points ❌ (${attempts}/3)`);
-
-      }
+      } else showToast(result.error || `Wrong secret points ❌ (${attempts}/3)`);
+      return;
     }
-
-  },1000);
+    attempts = 0;
+    localStorage.setItem("loginTime", Date.now());
+    localStorage.setItem("username", result.username);
+    localStorage.setItem("lastAttempts", "0");
+    localStorage.setItem("attempts", "0");
+    document.getElementById("attemptDisplay").innerText = "";
+    showToast("Login success ✅");
+    setTimeout(() => location.href = "dashboard.html", 500);
+  } catch (err) {
+    loader.classList.add("hidden");
+    showToast("Server error. Please try again ❌");
+  }
 }
-
 
 /* =================================================
    THEME TOGGLE

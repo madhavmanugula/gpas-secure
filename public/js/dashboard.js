@@ -50,10 +50,13 @@ window.onload = async function(){
   document.getElementById("userEmail").innerText = username + "@gmail.com";
 
   // Check admin access via backend
-  const res = await fetch(`/all-users?username=${username}`);
-  if(res.status !== 403){
-    document.getElementById("adminButton").classList.remove("hidden");
-  }
+  const res = await fetch("/session");
+  if (!res.ok) { logout(); return; }
+  const sessionData = await res.json();
+  if (sessionData.role === "admin") document.getElementById("adminButton").classList.remove("hidden");
+  /* Admin role is verified by the server, not local storage. */
+  const adminCheck = await fetch("/all-users");
+  if(adminCheck.ok){ document.getElementById("adminButton").classList.remove("hidden"); }
 
   let time = new Date(parseInt(loginTime));
 
@@ -107,7 +110,7 @@ window.onload = async function(){
 
   /* LOAD IMAGE */
   try{
-    let res = await fetch(`/user/${username}`);
+    let res = await fetch(`/user/${encodeURIComponent(username)}`);
     let data = await res.json();
 
     if(data.success){
@@ -150,10 +153,10 @@ function startTimer(loginTime){
 
 
 /* LOGOUT */
-function logout(){
+async function logout(){
   clearInterval(interval);
+  try { await fetch("/logout", { method: "POST", credentials: "same-origin" }); } catch (_) {}
   localStorage.clear();
-  alert("Session Ended");
   location.href="login.html";
 }
 
@@ -186,107 +189,99 @@ window.addEventListener("DOMContentLoaded", ()=>{
 
 /* ========= FILE UPLOAD ========= */
 async function uploadFile(){
-
   const fileInput = document.getElementById("fileInput");
   const file = fileInput.files[0];
   const username = localStorage.getItem("username");
-
   if(!file) return;
+  if(!username){ alert("Please log in again before uploading."); return; }
 
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("username", username);
-
   const xhr = new XMLHttpRequest();
-
   xhr.upload.onprogress = e=>{
-    const percent = (e.loaded / e.total) * 100;
-    document.getElementById("progressBar").style.width = percent + "%";
+    if(e.lengthComputable){
+      document.getElementById("progressBar").style.width = (e.loaded / e.total * 100) + "%";
+    }
   };
-
   xhr.onload = ()=>{
-    console.log("UPLOAD RESPONSE:", xhr.status, xhr.responseText);
+    let result = {};
+    try { result = JSON.parse(xhr.responseText); } catch (_) {}
+    if(xhr.status < 200 || xhr.status >= 300 || !result.success){
+      alert(result.error || "Upload failed. Please try again.");
+      return;
+    }
+    fileInput.value = "";
+    document.getElementById("progressBar").style.width = "0%";
     loadFiles();
     updateStorage();
   };
-
+  xhr.onerror = ()=>alert("Upload failed. Check your connection and try again.");
   xhr.open("POST","/upload-file");
   xhr.send(formData);
 }
 
+function escapeFileText(value){
+  return String(value).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[ch]));
+}
 
 /* LOAD FILES */
 async function loadFiles(){
-
   const username = localStorage.getItem("username");
-
-  const res = await fetch(`/get-files?username=${username}`);
-  const data = await res.json();
-
   const list = document.getElementById("fileList");
-  list.innerHTML = "";
-
-  data.files.forEach(f=>{
-  const safePath = f.replace(/\\/g, "/");
- const fileUrl = "/uploads/" + safePath.split("/").pop();
-    const name = safePath.split("/").pop();
-    const lower = name.toLowerCase();
-
-    let icon = "📄"; // default
-    if(lower.endsWith(".jpg") || lower.endsWith(".png") || lower.endsWith(".jpeg") || lower.endsWith(".gif") || lower.endsWith(".avif") || lower.endsWith(".webp")) icon = "🖼️";
-    else if(lower.endsWith(".pdf")) icon = "📕";
-    else if(lower.endsWith(".docx") || lower.endsWith(".doc")) icon = "📄";
-    else if(lower.endsWith(".zip") || lower.endsWith(".rar")) icon = "📦";
-
-    const previewable = lower.endsWith(".jpg") || lower.endsWith(".png") || lower.endsWith(".jpeg") || lower.endsWith(".gif") || lower.endsWith(".avif") || lower.endsWith(".webp") || lower.endsWith(".pdf");
-
-    list.innerHTML += `
-      <div class="flex items-center justify-between bg-white/10 p-3 rounded-xl hover:scale-105 transition">
-
-        <div class="flex items-center gap-2">
-          <span>${icon}</span>
-          <span class="text-xs">${name}</span>
-        </div>
-
-        <div class="flex gap-2">
-          ${previewable ? `<button onclick="previewFile('${fileUrl}')" class="bg-blue-500 px-2 py-1 text-xs rounded hover:scale-110">👁️</button>` : `<button disabled class="bg-slate-500/60 px-2 py-1 text-xs rounded cursor-not-allowed">👁️</button>`}
-
-          <a href="${fileUrl}" download
-            class="bg-green-500 px-2 py-1 text-xs rounded hover:scale-110">⬇️</a>
-
-          <button onclick="deleteFile('${fileUrl}')"
-            class="bg-red-500 px-2 py-1 text-xs rounded hover:scale-110">🗑️</button>
-
-        </div>
-
-      </div>
-    `;
-  });
+  if(!username || !list) return;
+  try {
+    const res = await fetch("/get-files");
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || "Could not load files");
+    list.innerHTML = "";
+    data.files.forEach(file=>{
+      const key = String(file.key || "");
+      const name = String(file.name || key.split("/").pop() || "file");
+      const lower = name.toLowerCase();
+      const fileUrl = String(file.url || "");
+      const downloadUrl = String(file.downloadUrl || file.url || "");
+      let icon = "📄";
+      if(/\.(jpg|png|jpeg|gif|avif|webp)$/i.test(lower)) icon = "🖼️";
+      else if(lower.endsWith(".pdf")) icon = "📕";
+      else if(/\.(docx|doc)$/i.test(lower)) icon = "📄";
+      else if(/\.(zip|rar)$/i.test(lower)) icon = "📦";
+      const previewable = /\.(jpg|png|jpeg|gif|avif|webp|pdf)$/i.test(lower);
+      list.innerHTML += `
+        <div class="flex items-center justify-between bg-white/10 p-3 rounded-xl hover:scale-105 transition">
+          <div class="flex items-center gap-2"><span>${icon}</span><span class="text-xs">${escapeFileText(name)}</span></div>
+          <div class="flex gap-2">
+            ${previewable ? `<button data-file-url="${escapeFileText(fileUrl)}" class="preview-file bg-blue-500 px-2 py-1 text-xs rounded hover:scale-110">👁️</button>` : `<button disabled class="bg-slate-500/60 px-2 py-1 text-xs rounded cursor-not-allowed">👁️</button>`}
+            <a href="${escapeFileText(downloadUrl)}" target="_blank" rel="noopener noreferrer" class="bg-green-500 px-2 py-1 text-xs rounded hover:scale-110">⬇️</a>
+            <button data-file-key="${escapeFileText(key)}" class="delete-file bg-red-500 px-2 py-1 text-xs rounded hover:scale-110">🗑️</button>
+          </div>
+        </div>`;
+    });
+    list.querySelectorAll(".preview-file").forEach(btn=>btn.addEventListener("click",()=>previewFile(btn.dataset.fileUrl)));
+    list.querySelectorAll(".delete-file").forEach(btn=>btn.addEventListener("click",()=>deleteFile(btn.dataset.fileKey)));
+  } catch(err) {
+    console.error("LOAD FILES ERROR:", err);
+    list.innerHTML = `<p class="text-sm text-red-300">${escapeFileText(err.message || "Could not load files")}</p>`;
+  }
 }
 
-/* PREVIEW SYSTEM */
-function previewFile(path){
-
+/* PREVIEW SYSTEM: signed R2 links expire after five minutes. */
+function previewFile(fileUrl){
   const modal = document.getElementById("previewModal");
   const img = document.getElementById("previewImg");
   const pdf = document.getElementById("previewPdf");
-
-  const fileUrl = path.startsWith("/") ? path : "/" + path;
-  const lower = fileUrl.toLowerCase();
-
+  const lower = String(fileUrl || "").toLowerCase().split("?")[0];
   modal.classList.remove("hidden");
-
-  if(lower.endsWith(".jpg") || lower.endsWith(".png") || lower.endsWith(".jpeg") || lower.endsWith(".gif") || lower.endsWith(".avif") || lower.endsWith(".webp")){
-    img.src = fileUrl + "?t=" + Date.now();
+  if(/\.(jpg|png|jpeg|gif|avif|webp)$/i.test(lower)){
+    img.src = fileUrl;
     img.classList.remove("hidden");
     pdf.classList.add("hidden");
-  }else if(lower.endsWith(".pdf")){
-   pdf.data = fileUrl + "?t=" + Date.now();
+  } else if(lower.endsWith(".pdf")){
+    pdf.data = fileUrl;
     pdf.classList.remove("hidden");
     img.classList.add("hidden");
-  }else{
-    alert("Preview not supported for this file type. Please download the file instead.");
+  } else {
     modal.classList.add("hidden");
+    alert("Preview not supported for this file type. Please download the file instead.");
   }
 }
 
@@ -294,7 +289,6 @@ function closePreview(){
   const modal = document.getElementById("previewModal");
   const img = document.getElementById("previewImg");
   const pdf = document.getElementById("previewPdf");
-
   img.src = "";
   pdf.data = "";
   img.classList.add("hidden");
@@ -302,42 +296,32 @@ function closePreview(){
   modal.classList.add("hidden");
 }
 
-/* STORAGE METER */
+/* STORAGE METER (demo estimate retained) */
 async function updateStorage(){
-
   const username = localStorage.getItem("username");
-
-  const res = await fetch(`/get-files?username=${username}`);
-  const data = await res.json();
-
-  let size = data.files.length * 2; // fake calc (for demo)
-
-  document.getElementById("storage").innerText =
-    size + "%";
+  if(!username) return;
+  try {
+    const res = await fetch("/get-files");
+    const data = await res.json();
+    const size = (data.files || []).length * 2;
+    const storage = document.getElementById("storage");
+    if(storage) storage.innerText = size + "%";
+  } catch(err) { console.error("STORAGE METER ERROR:", err); }
 }
 
 /* DELETE FILE */
-async function deleteFile(path){
-
+async function deleteFile(key){
   if(!confirm("Delete this file?")) return;
-
+  const username = localStorage.getItem("username");
   try{
     const res = await fetch("/delete-file",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({path})
+      body: JSON.stringify({path:key})
     });
-
     const data = await res.json();
-
-    if(!data.success){
-      alert("Delete failed: " + (data.error || "Unknown error"));
-      return;
-    }
-
+    if(!res.ok || !data.success){ alert("Delete failed: " + (data.error || "Unknown error")); return; }
     loadFiles();
     updateStorage();
-  }catch(err){
-    alert("Delete failed: " + err.message);
-  }
+  }catch(err){ alert("Delete failed: " + err.message); }
 }
